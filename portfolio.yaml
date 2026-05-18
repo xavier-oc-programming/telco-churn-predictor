@@ -10,7 +10,7 @@ live_url: https://telco-churn-predictor.azurewebsites.net
 demo_url: https://telco-churn-predictor.azurewebsites.net
 
 short_description: |
-  Predicts telecom customer churn using Logistic Regression (ROC-AUC 0.8362) with per-prediction SHAP explanations translated into plain business language. Benchmarked against Amazon Bedrock Claude Haiku 4.5 zero-shot — both scored 70% on the same 20-customer sample. Deployed as a Flask API on Azure App Service.
+  Churn prediction with SHAP explanations in plain business language. Logistic Regression wins (ROC-AUC 0.8362). Benchmarked against Amazon Bedrock Claude Haiku 4.5 zero-shot — tied at 70%. Flask API deployed on Azure App Service.
 
 full_description: |
   A production-grade churn prediction system trained on the IBM Telco Customer Churn dataset (7,043 customers, 26.5% churn rate). The system goes beyond a standard classifier — every prediction is accompanied by the top 3 risk factors and top 3 protective factors derived from SHAP values and expressed in plain English that a retention manager can act on without reading a confusion matrix.
