@@ -254,13 +254,14 @@ Returns metadata from the most recent `model_registry.csv` row.
 
 ## 9. Deployment — Azure App Service
 
-I chose Azure App Service over AWS Lambda for two reasons. First, having deployed twice to AWS (IMDb sentiment classifier and portfolio assistant), I wanted hands-on experience with Microsoft Azure — Accenture's primary cloud platform for enterprise AI delivery. Second, App Service solves a cold start problem: the XGBoost model and SHAP explainer initialise once at startup and remain in memory. Lambda would reload them on every cold start, adding ~8 seconds of latency per request after idle periods.
+I chose Azure App Service over AWS Lambda for two reasons. First, having deployed twice to AWS (IMDb sentiment classifier and portfolio assistant), I wanted hands-on experience with Microsoft Azure — Accenture's primary cloud platform for enterprise AI delivery. Second, App Service solves a cold start problem: the SHAP LinearExplainer initialises once at startup and remains in memory. Lambda would reload it on every cold start, adding latency per request after idle periods.
 
 ```bash
-# Create resource group and plan
+# Create resource group and App Service plan (F1 free tier)
 az group create --name telco-churn-rg --location westeurope
 az appservice plan create --name telco-churn-plan \
-  --resource-group telco-churn-rg --sku FREE --is-linux
+  --resource-group telco-churn-rg --sku B1 --is-linux
+# Scale down to F1 free tier via portal: App Service Plan → Scale up → Free F1
 
 # Create web app
 az webapp create --name telco-churn-predictor \
@@ -268,15 +269,21 @@ az webapp create --name telco-churn-predictor \
   --plan telco-churn-plan \
   --runtime "PYTHON:3.11"
 
-# Set startup command (600s timeout for SHAP initialisation)
+# Set gunicorn startup command — port 8000, 600s timeout for SHAP initialisation
 az webapp config set --name telco-churn-predictor \
   --resource-group telco-churn-rg \
-  --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 app:app"
+  --startup-file "gunicorn --bind=0.0.0.0:8000 --timeout 600 app:app"
 
-# Deploy
-az webapp up --name telco-churn-predictor \
+# Enable pip install during deployment
+az webapp config appsettings set --name telco-churn-predictor \
   --resource-group telco-churn-rg \
-  --runtime "PYTHON:3.11"
+  --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
+
+# Deploy via zip (triggers Oryx build — installs requirements.txt)
+zip -r /tmp/telco-churn.zip . --exclude "*.pyc" --exclude "__pycache__/*" --exclude ".git/*"
+az webapp deployment source config-zip --name telco-churn-predictor \
+  --resource-group telco-churn-rg \
+  --src /tmp/telco-churn.zip
 ```
 
 ## 10. Business Recommendations
