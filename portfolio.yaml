@@ -1,0 +1,58 @@
+title: Telco Customer Churn Predictor
+slug: telco-churn-predictor
+category: data
+date: 2026-05-18
+featured: false
+tags: machine-learning, AWS, flask, jupyter, deployment, benchmarking, data-analysis, statistical-analysis, feature-engineering, visualisation, web-app, API-integration
+tech_stack: Python, scikit-learn, XGBoost, SHAP, Flask, Amazon Bedrock, Azure App Service, pandas, NumPy, Matplotlib, gunicorn, boto3, joblib
+repo_url: https://github.com/xavier-oc-programming/telco-churn-predictor
+live_url: https://telco-churn-predictor.azurewebsites.net
+demo_url: https://telco-churn-predictor.azurewebsites.net
+
+short_description: |
+  Predicts telecom customer churn using Logistic Regression (ROC-AUC 0.8362) with per-prediction SHAP explanations translated into plain business language. Benchmarked against Amazon Bedrock Claude Haiku 4.5 zero-shot — both scored 70% on the same 20-customer sample. Deployed as a Flask API on Azure App Service.
+
+full_description: |
+  A production-grade churn prediction system trained on the IBM Telco Customer Churn dataset (7,043 customers, 26.5% churn rate). The system goes beyond a standard classifier — every prediction is accompanied by the top 3 risk factors and top 3 protective factors derived from SHAP values and expressed in plain English that a retention manager can act on without reading a confusion matrix.
+
+  Three models were trained and compared: Logistic Regression, Random Forest, and XGBoost. Logistic Regression won by ROC-AUC (0.8362), outperforming XGBoost (0.8196) — a result explained by the fact that one-hot encoding of contract type, payment method, and internet service creates a largely linear feature space that benefits a linear classifier.
+
+  A separate benchmarking script calls Amazon Bedrock (Claude Haiku 4.5) with plain-English customer summaries and no task-specific training. On a balanced 20-customer sample, Bedrock tied the trained XGBoost classifier at 70% accuracy — demonstrating both the ceiling of zero-shot LLM classification and the value of a trained model for production use.
+
+  The Flask API accepts customer attributes, preprocesses them to match the training pipeline exactly (manual one-hot encoding to avoid a single-row pd.get_dummies bug), runs the trained model, computes SHAP values, and returns the probability, risk tier, and natural-language factors in a single JSON response. Deployed on Azure App Service with gunicorn and a 600-second timeout to keep the SHAP explainer warm between requests.
+
+problem: |
+  Telecom companies lose 15–25% of customers annually to churn. Identifying at-risk customers before they cancel is worth millions in retained revenue — but a classifier score alone is not actionable. A retention team needs to know not just who is at risk, but why, and what specific intervention to offer.
+
+  The secondary problem: understanding where foundation models (LLMs) can replace a trained classifier versus where they fall short. For teams without labelled training data, knowing Bedrock's zero-shot ceiling on this task is a concrete, reproducible answer.
+
+solution: |
+  A three-stage pipeline: train, explain, serve.
+
+  Training: three classifiers evaluated by ROC-AUC on a stratified 80/20 split. The winning model (Logistic Regression) and its scaler are serialised with joblib and versioned in a model registry CSV.
+
+  Explanation: SHAP LinearExplainer computes feature contributions for each prediction. A custom shap_to_language.py module maps every SHAP value to a human-readable sentence — e.g. "two-year contract strongly reduces churn risk" — sorted by magnitude and surfaced as top risk and protective factors.
+
+  Serving: a Flask REST API with a single /predict endpoint. Manual one-hot encoding replicates the training pipeline on a single row without the pd.get_dummies baseline-dropping bug. A model registry endpoint exposes training metadata. The frontend demo lets users adjust 9 customer attributes and see predictions update in real time.
+
+  Benchmarking: a standalone script samples 10 churned and 10 retained customers from the test set, generates plain-English customer profiles, calls Amazon Bedrock one call per customer, and produces a side-by-side confusion matrix plot comparing zero-shot LLM vs trained classifier.
+
+challenges: |
+  Single-row preprocessing bug: pd.get_dummies(drop_first=True) on a single-row DataFrame drops the one value it sees — not the baseline category. A customer with a "Two year" contract would have the Two-year dummy silently zeroed out, collapsing it to the Month-to-month baseline. Fixed by replacing get_dummies with explicit integer assignments for every categorical column.
+
+  SHAP version incompatibility: LinearExplainer returned Python floats in some shap/numpy version combinations, causing AttributeError in the beeswarm plot. Fixed by casting all SHAP output to np.float64 before passing to SHAP visualisation functions.
+
+  Amazon Bedrock model deprecation: the originally specified Claude Haiku model ID was marked Legacy. Discovered the correct cross-region inference profile ID (us.anthropic.claude-haiku-4-5-20251001-v1:0) by testing candidate IDs directly. Further issue: the model returned JSON wrapped in markdown code fences — stripped before parsing.
+
+  Azure startup timeout: the B1 App Service plan (1.75GB RAM) successfully initialises SHAP + XGBoost at startup but takes ~17 seconds. The deployment polling timed out before the process stabilised — the app was running before the CLI reported success.
+
+results: |
+  Logistic Regression: Accuracy 0.8031, Precision 0.6483, Recall 0.5668, F1 0.6049, ROC-AUC 0.8362
+  XGBoost: Accuracy 0.7783, ROC-AUC 0.8196
+  Random Forest: Accuracy 0.7818, ROC-AUC 0.8194
+
+  Amazon Bedrock Claude Haiku 4.5 zero-shot: 70% accuracy on 20-customer sample — tied with XGBoost on the same sample. XGBoost errors skewed toward false negatives (5 missed churners, 1 false alarm); Bedrock errors were balanced (3 false negatives, 3 false positives), suggesting LLMs apply more symmetric heuristics without label-frequency bias from training data.
+
+  SHAP analysis confirmed contract type and tenure as the dominant churn drivers: two-year contract carries a mean |SHAP| of 0.31 (strongly protective), fiber optic internet 0.18 (risk factor), and electronic check payment 0.14 (risk factor). These translate directly into three retention interventions: contract upgrade offers, service bundle discounts for fiber customers, and automatic payment incentives.
+
+  Live at https://telco-churn-predictor.azurewebsites.net
