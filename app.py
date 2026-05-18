@@ -134,9 +134,25 @@ def preprocess_input(data: dict) -> np.ndarray:
 
     df['gender'] = (df['gender'] == 'Male').astype(int)
 
-    # One-hot encode nominal categoricals (drop_first matches training)
-    df = pd.get_dummies(df, columns=['Contract', 'PaymentMethod', 'InternetService'],
-                        drop_first=True)
+    # Manual one-hot encoding to match train.py's pd.get_dummies(drop_first=True) exactly.
+    # pd.get_dummies on a single row always drops the one value it sees, so non-baseline
+    # categories (e.g. 'Electronic check') would be silently zeroed out.
+    # Baselines dropped by drop_first: Contract=Month-to-month,
+    # PaymentMethod=Bank transfer (automatic), InternetService=DSL.
+    contract = row.get('Contract', 'Month-to-month')
+    df['Contract_One year'] = int(contract == 'One year')
+    df['Contract_Two year'] = int(contract == 'Two year')
+
+    payment = row.get('PaymentMethod', 'Bank transfer (automatic)')
+    df['PaymentMethod_Credit card (automatic)'] = int(payment == 'Credit card (automatic)')
+    df['PaymentMethod_Electronic check']        = int(payment == 'Electronic check')
+    df['PaymentMethod_Mailed check']            = int(payment == 'Mailed check')
+
+    internet = row.get('InternetService', 'DSL')
+    df['InternetService_Fiber optic'] = int(internet == 'Fiber optic')
+    df['InternetService_No']          = int(internet == 'No')
+
+    df = df.drop(columns=['Contract', 'PaymentMethod', 'InternetService'], errors='ignore')
 
     # Align columns to training feature set
     for col in feature_names:

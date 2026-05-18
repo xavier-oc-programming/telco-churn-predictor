@@ -359,7 +359,7 @@
 
     </div>
 
-    <button class="predict-btn" id="predict-btn" onclick="submitPrediction()">
+    <button class="predict-btn" id="predict-btn" onclick="submitManual()">
       <span id="btn-text">Predict Churn Risk</span>
       <div class="spinner" id="spinner"></div>
     </button>
@@ -449,26 +449,47 @@
     setToggle('sc', d.SeniorCitizen === 1 ? 'Yes' : 'No');
   }
 
+  // Each example has form fields (shown in the UI) and optional hidden extras
+  // sent to the API for features not on the form (StreamingTV etc.)
   const EXAMPLES = {
     high: {
-      tenure: 4, MonthlyCharges: 89, Contract: 'Month-to-month',
-      InternetService: 'Fiber optic', TechSupport: 'No', OnlineSecurity: 'No',
-      PaymentMethod: 'Electronic check', PaperlessBilling: 'Yes', SeniorCitizen: 0,
+      form: {
+        tenure: 4, MonthlyCharges: 89, Contract: 'Month-to-month',
+        InternetService: 'Fiber optic', TechSupport: 'No', OnlineSecurity: 'No',
+        PaymentMethod: 'Electronic check', PaperlessBilling: 'Yes', SeniorCitizen: 0,
+      },
+      extra: { StreamingTV: 'Yes', StreamingMovies: 'Yes' },
     },
     low: {
-      tenure: 60, MonthlyCharges: 45, Contract: 'Two year',
-      InternetService: 'DSL', TechSupport: 'Yes', OnlineSecurity: 'Yes',
-      PaymentMethod: 'Credit card (automatic)', PaperlessBilling: 'No', SeniorCitizen: 0,
+      form: {
+        tenure: 60, MonthlyCharges: 45, Contract: 'Two year',
+        InternetService: 'DSL', TechSupport: 'Yes', OnlineSecurity: 'Yes',
+        PaymentMethod: 'Credit card (automatic)', PaperlessBilling: 'No', SeniorCitizen: 0,
+      },
+      extra: {},
     },
     borderline: {
-      tenure: 24, MonthlyCharges: 65, Contract: 'One year',
-      InternetService: 'Fiber optic', TechSupport: 'No', OnlineSecurity: 'Yes',
-      PaymentMethod: 'Bank transfer (automatic)', PaperlessBilling: 'Yes', SeniorCitizen: 1,
+      form: {
+        tenure: 24, MonthlyCharges: 65, Contract: 'One year',
+        InternetService: 'Fiber optic', TechSupport: 'No', OnlineSecurity: 'Yes',
+        PaymentMethod: 'Bank transfer (automatic)', PaperlessBilling: 'Yes', SeniorCitizen: 1,
+      },
+      extra: {},
     },
   };
 
+  let _extraPayload = {};
+
   function loadExample(key) {
-    setFormData(EXAMPLES[key]);
+    const ex = EXAMPLES[key];
+    _extraPayload = ex.extra || {};
+    setFormData(ex.form);
+    submitPrediction();
+  }
+
+  // Called by the manual Predict button — clears any example extras
+  function submitManual() {
+    _extraPayload = {};
     submitPrediction();
   }
 
@@ -484,7 +505,7 @@
       const resp = await fetch('/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(getFormData()),
+        body: JSON.stringify({ ...getFormData(), ..._extraPayload }),
       });
       const d = await resp.json();
 
