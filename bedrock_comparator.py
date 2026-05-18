@@ -1,7 +1,7 @@
 """
 bedrock_comparator.py
 
-Benchmarks Amazon Bedrock (Claude Haiku) against the trained XGBoost classifier
+Benchmarks Amazon Bedrock (Claude Haiku 4.5) against the trained XGBoost classifier
 on a 20-customer sample: 10 churned, 10 retained.
 
 Bedrock classifies churn from a plain-English customer summary — zero task-specific
@@ -12,7 +12,7 @@ Run with: python bedrock_comparator.py
 # Requires AWS credentials: aws configure or environment variables
 # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
 # Requires Bedrock model access enabled in AWS console for:
-# anthropic.claude-haiku-20240307-v1:0
+# us.anthropic.claude-haiku-4-5-20251001-v1:0  (Claude Haiku 4.5 cross-region profile)
 # Region: us-east-1
 """
 
@@ -146,10 +146,10 @@ except Exception as e:
 BEDROCK_PROMPT_TEMPLATE = (
     "You are a telecom churn analyst. Based on this customer profile, "
     "predict whether this customer is likely to churn (cancel their subscription). "
-    "Respond with only a JSON object with these exact keys: "
-    '{"prediction": "churn" or "retain", '
+    'Respond with only a JSON object with these exact keys: '
+    '{{"prediction": "churn" or "retain", '
     '"confidence": "high" or "medium" or "low", '
-    '"reasoning": "one sentence max"}'
+    '"reasoning": "one sentence max"}}'
     "\n\nCustomer: {summary}"
 )
 
@@ -185,11 +185,18 @@ for i, idx in enumerate(sample_idx):
             'messages': [{'role': 'user', 'content': prompt}],
         })
         response = bedrock.invoke_model(
-            modelId='anthropic.claude-haiku-20240307-v1:0',
+            modelId='us.anthropic.claude-haiku-4-5-20251001-v1:0',
             body=body,
         )
         raw_response = json.loads(response['body'].read())
-        parsed = json.loads(raw_response['content'][0]['text'])
+        text = raw_response['content'][0]['text'].strip()
+        # Strip markdown code fences if model wraps JSON in ```json ... ```
+        if text.startswith('```'):
+            text = text.split('```')[1]
+            if text.startswith('json'):
+                text = text[4:]
+            text = text.strip()
+        parsed = json.loads(text)
 
         result['bedrock_prediction'] = 1 if parsed.get('prediction') == 'churn' else 0
         result['bedrock_confidence'] = parsed.get('confidence', 'unknown')

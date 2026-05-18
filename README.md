@@ -108,8 +108,8 @@ A bagged ensemble of 100 decision trees. Handles non-linear interactions between
 ### XGBoost
 Gradient-boosted trees — typically the strongest performer on structured/tabular data. Unlike bagging (Random Forest), boosting builds trees sequentially, each correcting the residual errors of its predecessors. Selected as the primary model by ROC-AUC.
 
-### Amazon Bedrock — Claude Haiku (comparator)
-Zero-shot classification from a natural language customer summary — no task-specific training. Included not to compete with XGBoost on accuracy (it cannot), but to demonstrate where foundation models add value: interpreting edge cases, generating retention scripts, and explaining predictions in natural language. Evaluated on a 20-customer sample only.
+### Amazon Bedrock — Claude Haiku 4.5 (comparator)
+Zero-shot classification from a natural language customer summary — no task-specific training. Included not to compete with XGBoost on accuracy, but to demonstrate where foundation models add value: interpreting edge cases, generating retention scripts, and explaining predictions in natural language. Evaluated on a 20-customer sample (10 churned, 10 retained) only.
 
 ## 5. Results
 
@@ -118,9 +118,9 @@ Zero-shot classification from a natural language customer summary — no task-sp
 | Logistic Regression | **0.8031** | **0.6483** | **0.5668** | **0.6049** | **0.8362** |
 | Random Forest       | 0.7818   | 0.6143    | 0.4813 | 0.5397 | 0.8194  |
 | XGBoost             | 0.7783   | 0.5891    | 0.5481 | 0.5679 | 0.8196  |
-| Bedrock (Haiku)*    | TBD      | —         | —      | —      | —       |
+| Bedrock (Haiku 4.5)* | 0.70 (14/20) | —    | —      | —      | —       |
 
-*Bedrock evaluated on 20-customer sample only. No training. Included to compare zero-shot LLM performance against trained classifiers. Run `python bedrock_comparator.py` (requires AWS credentials) to populate.*
+*Bedrock evaluated on 20-customer sample only (10 churned, 10 retained). No training — pure zero-shot. Tied XGBoost at 70% on this sample. XGBoost errors skewed toward false negatives (5 missed churners); Bedrock errors were balanced (3 false negatives, 3 false positives). Run `python bedrock_comparator.py` (requires AWS credentials) to reproduce.*
 
 **Winner: Logistic Regression** — selected by ROC-AUC (0.8362). Logistic Regression outperforming XGBoost here is notable: it indicates that the relationship between the engineered features and churn is largely linear after one-hot encoding. The contract type, tenure, and internet service dummies align well with a linear decision boundary.
 
