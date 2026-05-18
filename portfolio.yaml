@@ -3,7 +3,7 @@ slug: telco-churn-predictor
 category: data
 date: 2026-05-18
 featured: false
-tags: machine-learning, AWS, flask, jupyter, deployment, benchmarking, data-analysis, statistical-analysis, feature-engineering, visualisation, web-app, API-integration, LLM, REST-API, data-pipeline, label-encoding, resampling, python, NLP, xgboost, logistic-regression, shap, explainability, churn-prediction, classification, tabular-data, model-registry, zero-shot, azure, scikit-learn
+tags: machine-learning, AWS, azure, flask, jupyter, deployment, benchmarking, data-analysis, statistical-analysis, feature-engineering, visualisation, web-app, API-integration, LLM, REST-API, data-pipeline, label-encoding, resampling, python, NLP, xgboost, logistic-regression, shap, explainability, churn-prediction, classification, tabular-data, model-registry, zero-shot, scikit-learn
 tech_stack: Python, scikit-learn, XGBoost, SHAP, Flask, Amazon Bedrock, Azure App Service, pandas, NumPy, Matplotlib, gunicorn, boto3, joblib
 repo_url: https://github.com/xavier-oc-programming/telco-churn-predictor
 live_url: https://telco-churn-predictor.azurewebsites.net
