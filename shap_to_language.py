@@ -5,54 +5,53 @@ Translates raw SHAP values for a single churn prediction into plain-English
 factors that a non-technical stakeholder can understand and act on.
 
 Imported by app.py at startup. No classes — module-level dicts and one function.
+
+Key: feature names here must exactly match the column names produced by
+train.py's preprocessing. Binary Yes/No columns (TechSupport, OnlineSecurity,
+etc.) are encoded directly as 0/1 integers — their column names have NO '_Yes'
+suffix. Only the pd.get_dummies columns (Contract, PaymentMethod,
+InternetService) carry a category suffix.
 """
 
-# Maps every preprocessed feature name (including one-hot encoded columns) to
-# a human-readable label shown in the UI and notebook.
+# Maps every preprocessed feature name to a human-readable label.
 FEATURE_LABELS = {
-    # Numeric features
-    'tenure': 'Customer tenure',
-    'MonthlyCharges': 'Monthly charges',
-    'TotalCharges': 'Total charges',
-    'SeniorCitizen': 'Senior citizen',
+    # Numeric
+    'tenure':          'Customer tenure',
+    'MonthlyCharges':  'Monthly charges',
+    'TotalCharges':    'Total charges',
+    'SeniorCitizen':   'Senior citizen',
 
-    # Contract type (one-hot, drop_first removes Month-to-month as baseline)
+    # One-hot: Contract (baseline = Month-to-month)
     'Contract_One year': 'One-year contract',
     'Contract_Two year': 'Two-year contract',
 
-    # Internet service (drop_first removes DSL as baseline)
+    # One-hot: InternetService (baseline = DSL)
     'InternetService_Fiber optic': 'Fiber optic internet',
-    'InternetService_No': 'No internet service',
+    'InternetService_No':          'No internet service',
 
-    # Payment method (drop_first removes Bank transfer as baseline)
+    # One-hot: PaymentMethod (baseline = Bank transfer (automatic))
     'PaymentMethod_Credit card (automatic)': 'Credit card (automatic) payment',
-    'PaymentMethod_Electronic check': 'Electronic check payment',
-    'PaymentMethod_Mailed check': 'Mailed check payment',
+    'PaymentMethod_Electronic check':        'Electronic check payment',
+    'PaymentMethod_Mailed check':            'Mailed check payment',
 
-    # Binary Yes/No service features
-    'TechSupport_Yes': 'Tech support subscription',
-    'OnlineSecurity_Yes': 'Online security subscription',
-    'OnlineBackup_Yes': 'Online backup subscription',
-    'DeviceProtection_Yes': 'Device protection subscription',
-    'StreamingTV_Yes': 'Streaming TV subscription',
-    'StreamingMovies_Yes': 'Streaming movies subscription',
-
-    # Paperless billing
-    'PaperlessBilling_Yes': 'Paperless billing',
-
-    # Partner / Dependents / Phone
-    'Partner_Yes': 'Has a partner',
-    'Dependents_Yes': 'Has dependents',
-    'PhoneService_Yes': 'Has phone service',
-    'MultipleLines_Yes': 'Multiple phone lines',
-
-    # Gender (encoded but low SHAP signal in practice)
-    'gender_Male': 'Gender: male',
+    # Binary 0/1 columns — no '_Yes' suffix (encoded directly in train.py)
+    'TechSupport':      'Tech support subscription',
+    'OnlineSecurity':   'Online security subscription',
+    'OnlineBackup':     'Online backup subscription',
+    'DeviceProtection': 'Device protection subscription',
+    'StreamingTV':      'Streaming TV subscription',
+    'StreamingMovies':  'Streaming movies subscription',
+    'PaperlessBilling': 'Paperless billing',
+    'Partner':          'Has a partner',
+    'Dependents':       'Has dependents',
+    'PhoneService':     'Has phone service',
+    'MultipleLines':    'Multiple phone lines',
+    'gender':           'Gender',
 }
 
 # Maps each feature name to (text_when_shap_positive, text_when_shap_negative).
-# shap > 0 → feature pushes the prediction toward churn.
-# shap < 0 → feature pushes the prediction away from churn (protective).
+# shap > 0 → feature pushes toward churn (risk).
+# shap < 0 → feature pushes away from churn (protective).
 DIRECTION_TEMPLATES = {
     'tenure': (
         'short tenure increases churn risk',
@@ -105,54 +104,52 @@ DIRECTION_TEMPLATES = {
         'non-mailed-check payment reduces churn risk',
     ),
 
-    # Support and security services
-    'TechSupport_Yes': (
+    # Binary service features (column names without '_Yes')
+    'TechSupport': (
         'no tech support increases churn risk',
         'tech support subscription reduces churn risk',
     ),
-    'OnlineSecurity_Yes': (
+    'OnlineSecurity': (
         'no online security increases churn risk',
         'online security subscription reduces churn risk',
     ),
-    'OnlineBackup_Yes': (
+    'OnlineBackup': (
         'no online backup increases churn risk',
         'online backup subscription reduces churn risk',
     ),
-    'DeviceProtection_Yes': (
+    'DeviceProtection': (
         'no device protection increases churn risk',
         'device protection subscription reduces churn risk',
     ),
-    'StreamingTV_Yes': (
+    'StreamingTV': (
         'streaming TV subscription correlates with higher churn',
         'no streaming TV correlates with lower churn',
     ),
-    'StreamingMovies_Yes': (
+    'StreamingMovies': (
         'streaming movies subscription correlates with higher churn',
         'no streaming movies correlates with lower churn',
     ),
-
-    # Billing and demographics
-    'PaperlessBilling_Yes': (
+    'PaperlessBilling': (
         'paperless billing correlates with higher churn risk',
         'non-paperless billing correlates with lower churn risk',
     ),
-    'Partner_Yes': (
+    'Partner': (
         'absence of a partner correlates with higher churn',
         'having a partner correlates with lower churn',
     ),
-    'Dependents_Yes': (
+    'Dependents': (
         'absence of dependents correlates with higher churn',
         'having dependents correlates with lower churn',
     ),
-    'PhoneService_Yes': (
+    'PhoneService': (
         'phone service subscription correlates with higher churn in this segment',
-        'no phone service correlates with lower churn in this segment',
+        'phone service subscription reduces churn risk in this segment',
     ),
-    'MultipleLines_Yes': (
+    'MultipleLines': (
         'multiple phone lines correlate with higher churn',
         'single phone line correlates with lower churn',
     ),
-    'gender_Male': (
+    'gender': (
         'male gender correlates marginally with higher churn',
         'female gender correlates marginally with lower churn',
     ),
@@ -191,19 +188,12 @@ def shap_values_to_factors(
         templates = DIRECTION_TEMPLATES.get(feature)
 
         if shap_val > 0:
-            if templates:
-                text = templates[0]
-            else:
-                text = f'{label} increases churn risk'
+            text = templates[0] if templates else f'{label} increases churn risk'
             risk_factors.append((abs(shap_val), text))
         else:
-            if templates:
-                text = templates[1]
-            else:
-                text = f'{label} reduces churn risk'
+            text = templates[1] if templates else f'{label} reduces churn risk'
             protective_factors.append((abs(shap_val), text))
 
-    # Sort each list by SHAP magnitude descending, return only the text strings
     risk_factors.sort(key=lambda x: x[0], reverse=True)
     protective_factors.sort(key=lambda x: x[0], reverse=True)
 
