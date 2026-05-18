@@ -39,8 +39,15 @@ try:
     feature_names = joblib.load('models/feature_names.pkl')
     model_name = Path('models/best_model_name.txt').read_text().strip()
 
-    # Initialise SHAP explainer once at startup (~8 s for XGBoost on first run)
-    explainer = shap.TreeExplainer(best_model)
+    # Initialise SHAP explainer once at startup — type depends on winning model
+    # LinearExplainer is exact for Logistic Regression; TreeExplainer for XGBoost/RF
+    if model_name == 'Logistic Regression':
+        # Background of zeros is valid here because features are StandardScaler-normalised
+        # (zero = feature mean), giving a meaningful baseline for the linear model
+        bg = np.zeros((1, len(feature_names)))
+        explainer = shap.LinearExplainer(best_model, bg)
+    else:
+        explainer = shap.TreeExplainer(best_model)
 
     registry_path = Path('models/model_registry.csv')
     if registry_path.exists():
@@ -181,11 +188,9 @@ def predict():
         risk_level = 'low'
 
     # SHAP explanation for this single prediction
-    raw_shap = explainer.shap_values(X)
-    if isinstance(raw_shap, list):
-        shap_row = raw_shap[1][0]
-    else:
-        shap_row = raw_shap[0]
+    raw_shap = np.array(explainer.shap_values(X), dtype=np.float64)
+    # TreeExplainer returns list of arrays for binary classification; take class-1 slice
+    shap_row = raw_shap[1][0] if raw_shap.ndim == 3 else raw_shap[0]
 
     risk_factors, protective_factors = shap_values_to_factors(
         shap_row.tolist(), feature_names, top_n=3

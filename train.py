@@ -270,16 +270,16 @@ X_test_arr = X_test.values
 X_train_arr = X_train.values
 
 if best_name == 'Logistic Regression':
-    # LinearExplainer is exact for linear models
     explainer = shap.LinearExplainer(best_model, X_train_arr, feature_perturbation='interventional')
     shap_values = explainer.shap_values(X_test_arr)
 else:
-    # TreeExplainer is exact for tree-based models
     explainer = shap.TreeExplainer(best_model)
     shap_values = explainer.shap_values(X_test_arr)
-    # XGBoost TreeExplainer may return a 3D array for binary classification
     if isinstance(shap_values, list):
         shap_values = shap_values[1]
+
+# Force float64 ndarray — LinearExplainer can return Python floats in some SHAP versions
+shap_values = np.array(shap_values, dtype=np.float64)
 
 # 05 — SHAP beeswarm summary plot
 fig, ax = plt.subplots(figsize=(10, 8))
@@ -294,11 +294,17 @@ y_proba_test = best_model.predict_proba(X_test_arr)[:, 1]
 high_risk_idx = int(np.argmax(y_proba_test))
 low_risk_idx = int(np.argmin(y_proba_test))
 
+# Normalise expected_value to a plain Python float regardless of explainer type
+base_val = float(
+    explainer.expected_value[0]
+    if isinstance(explainer.expected_value, (list, np.ndarray))
+    else explainer.expected_value
+)
+
 # 06 — Waterfall for highest-probability churn customer
 shap_exp_high = shap.Explanation(
     values=shap_values[high_risk_idx],
-    base_values=explainer.expected_value if not isinstance(explainer.expected_value, np.ndarray)
-                else explainer.expected_value[0],
+    base_values=base_val,
     data=X_test_arr[high_risk_idx],
     feature_names=feature_names,
 )
@@ -313,8 +319,7 @@ print('  Saved 06_shap_waterfall_churn.png')
 # 07 — Waterfall for lowest-probability churn customer
 shap_exp_low = shap.Explanation(
     values=shap_values[low_risk_idx],
-    base_values=explainer.expected_value if not isinstance(explainer.expected_value, np.ndarray)
-                else explainer.expected_value[0],
+    base_values=base_val,
     data=X_test_arr[low_risk_idx],
     feature_names=feature_names,
 )

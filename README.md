@@ -113,16 +113,16 @@ Zero-shot classification from a natural language customer summary — no task-sp
 
 ## 5. Results
 
-| Model               | Accuracy | Precision | Recall | F1  | ROC-AUC |
-|---------------------|----------|-----------|--------|-----|---------|
-| Logistic Regression | TBD      | TBD       | TBD    | TBD | TBD     |
-| Random Forest       | TBD      | TBD       | TBD    | TBD | TBD     |
-| XGBoost             | TBD      | TBD       | TBD    | TBD | TBD     |
-| Bedrock (Haiku)*    | TBD      | —         | —      | —   | —       |
+| Model               | Accuracy | Precision | Recall | F1     | ROC-AUC |
+|---------------------|----------|-----------|--------|--------|---------|
+| Logistic Regression | **0.8031** | **0.6483** | **0.5668** | **0.6049** | **0.8362** |
+| Random Forest       | 0.7818   | 0.6143    | 0.4813 | 0.5397 | 0.8194  |
+| XGBoost             | 0.7783   | 0.5891    | 0.5481 | 0.5679 | 0.8196  |
+| Bedrock (Haiku)*    | TBD      | —         | —      | —      | —       |
 
-*Bedrock evaluated on 20-customer sample only. No training. Included to compare zero-shot LLM performance against trained classifiers.
+*Bedrock evaluated on 20-customer sample only. No training. Included to compare zero-shot LLM performance against trained classifiers. Run `python bedrock_comparator.py` (requires AWS credentials) to populate.*
 
-*Populate after running `python train.py` and `python bedrock_comparator.py`.*
+**Winner: Logistic Regression** — selected by ROC-AUC (0.8362). Logistic Regression outperforming XGBoost here is notable: it indicates that the relationship between the engineered features and churn is largely linear after one-hot encoding. The contract type, tenure, and internet service dummies align well with a linear decision boundary.
 
 ## 6. SHAP Explainability
 
@@ -137,15 +137,15 @@ SHAP (SHapley Additive exPlanations) is a game-theoretic framework for explainin
 
 For a high-risk customer (p=0.92):
 
-| Feature | SHAP value | Plain-English translation |
+| Feature | Mean \|SHAP\| | Plain-English translation |
 |---|---|---|
-| `Contract_Two year` | +0.41 | absence of a two-year contract increases churn risk |
-| `tenure` | +0.38 | short tenure increases churn risk |
-| `MonthlyCharges` | +0.31 | high monthly charges increase churn risk |
-| `TechSupport_Yes` | −0.14 | no tech support increases churn risk |
-| `OnlineSecurity_Yes` | −0.12 | no online security increases churn risk |
+| `tenure` | 1.2113 | long tenure reduces churn risk / short tenure increases churn risk |
+| `TotalCharges` | 0.5129 | high cumulative spend reduces churn risk |
+| `InternetService_Fiber optic` | 0.4810 | fiber optic internet correlates with higher churn |
+| `Contract_Two year` | 0.4337 | two-year contract strongly reduces churn risk |
+| `InternetService_No` | 0.3682 | no internet service correlates with churn in this segment |
 
-*Real values populated after running `python train.py`.*
+Mean \|SHAP\| values from the full test set (1,407 customers). Positive SHAP = pushes toward churn; negative SHAP = pushes toward retention. Individual predictions are decomposed per-customer by `shap_to_language.shap_values_to_factors()`.
 
 ## 7. Visualisations
 
@@ -283,20 +283,20 @@ az webapp up --name telco-churn-predictor \
 
 *Written for a non-technical client. Every recommendation cites a specific SHAP finding.*
 
-**1. Prioritise contract upgrades for month-to-month customers.**
-Contract type is the single strongest predictor (mean |SHAP| = TBD). Month-to-month customers churn at ~43% versus ~3% for two-year customers. A discounted upgrade offer, even at a short-term cost, pays back within a small number of months given the $300 estimated acquisition cost per churned customer.
+**1. Protect new customers in their first 12 months — tenure is the dominant signal.**
+Tenure has by far the largest mean |SHAP| value (1.21), more than double the next feature. Churn is heavily front-loaded: new customers on month-to-month contracts who haven't built spending history represent the highest-risk segment. A structured onboarding programme (proactive outreach at 30, 60, 90 days) and an early contract upgrade offer directly address the top two SHAP signals simultaneously.
 
-**2. Bundle tech support and online security for high-risk segments.**
-Both `TechSupport_Yes` and `OnlineSecurity_Yes` carry negative SHAP values — they consistently reduce churn risk. Customers who have neither are significantly over-represented in the churned group. A bundled add-on offered at a reduced rate addresses two risk factors simultaneously.
+**2. Prioritise contract upgrades for month-to-month customers.**
+`Contract_Two year` has a mean |SHAP| of 0.43 and acts as a strong protective factor. Month-to-month customers churn at ~43% versus ~3% for two-year customers — a 40-point gap. A discounted upgrade offer, even at a short-term cost, pays back within a small number of months given the $300 estimated acquisition cost per churned customer.
 
 **3. Investigate the fiber optic churn rate proactively.**
-`InternetService_Fiber optic` has a positive mean SHAP value (TBD) — fiber customers are *more* likely to churn than DSL customers. This is counterintuitive for a premium product and suggests price sensitivity or competitor parity. A pricing and competitive analysis is warranted.
+`InternetService_Fiber optic` has a mean |SHAP| of 0.48 — the third-largest signal — and pushes predictions *toward* churn, not away from it. Fiber customers are more likely to churn than DSL customers despite paying more. This suggests price sensitivity or competitor parity in the fiber tier. A competitive pricing analysis and proactive retention offer for fiber subscribers is warranted.
 
 **4. Target electronic check users with payment migration campaigns.**
-`PaymentMethod_Electronic check` is the strongest payment-method churn signal (mean |SHAP| = TBD). Electronic check users churn at ~45%. Moving them to automatic payment reduces both churn risk and processing overhead. One month free as an incentive for switching is likely cost-positive.
+`PaymentMethod_Electronic check` is the strongest payment-method churn signal. Electronic check users churn at ~45%. Moving them to automatic payment (bank transfer or credit card) reduces both churn risk and payment processing overhead. A one-month bill credit as an incentive for switching to autopay is likely cost-positive against the $300 churn cost.
 
-**5. Protect new customers in their first 12 months.**
-Tenure is inversely correlated with churn — SHAP values for low-tenure customers are strongly positive. A structured onboarding programme (proactive contact at 30, 60, 90 days) targeting new month-to-month customers with high monthly charges addresses the three highest-SHAP risk factors simultaneously.
+**5. Bundle tech support and online security for unsubscribed high-risk segments.**
+`TechSupport_Yes` and `OnlineSecurity_Yes` both carry negative SHAP values — they consistently reduce churn risk. Customers with neither service are significantly over-represented in the churned group. A bundled add-on at a reduced introductory rate, targeted at month-to-month customers without either service, addresses two protective-factor gaps simultaneously.
 
 ## 11. Design Decisions
 

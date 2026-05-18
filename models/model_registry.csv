@@ -1,0 +1,3 @@
+timestamp,model_name,roc_auc,f1,train_samples,test_samples,model_file
+20260518_123502,Logistic Regression,0.8362,0.6049,5625,1407,models/best_model_20260518_123502.pkl
+20260518_123545,Logistic Regression,0.8362,0.6049,5625,1407,models/best_model_20260518_123545.pkl
