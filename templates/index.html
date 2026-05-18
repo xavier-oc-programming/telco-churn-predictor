@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telco Churn Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f7f9fc;
+      color: #1a2332;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #2E75B6;
+      color: white;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(46,117,182,0.2);
+    }
+    header h1 { font-size: 1.35rem; font-weight: 600; letter-spacing: -0.3px; }
+    header p  { font-size: 0.82rem; opacity: 0.85; margin-top: 2px; }
+    .model-badge {
+      background: rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 0.3rem 0.85rem;
+      font-size: 0.78rem;
+      text-align: right;
+      line-height: 1.5;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1.25rem;
+    }
+
+    /* Example customer buttons */
+    .examples-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .examples-bar span {
+      font-size: 0.8rem;
+      color: #6b7a8d;
+      align-self: center;
+      font-weight: 500;
+    }
+    .example-btn {
+      padding: 0.45rem 1rem;
+      border-radius: 20px;
+      border: 1.5px solid;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      background: white;
+      transition: all 0.15s;
+    }
+    .example-btn.high  { border-color: #C0392B; color: #C0392B; }
+    .example-btn.low   { border-color: #27AE60; color: #27AE60; }
+    .example-btn.mid   { border-color: #E67E22; color: #E67E22; }
+    .example-btn:hover { opacity: 0.75; }
+
+    /* Form card */
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      margin-bottom: 1.5rem;
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #2E75B6;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem 2rem;
+    }
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .field label { font-size: 0.82rem; font-weight: 500; color: #3d4f63; }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #2E75B6;
+      cursor: pointer;
+      height: 4px;
+    }
+    .slider-val {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #2E75B6;
+    }
+
+    select {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1.5px solid #dde3eb;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.88rem;
+      color: #1a2332;
+      background: white;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%232E75B6' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+    }
+    select:focus { outline: none; border-color: #2E75B6; }
+
+    /* Toggle */
+    .toggle-row { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+    .toggle-btn {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1.5px solid #dde3eb;
+      border-radius: 8px;
+      background: white;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: #6b7a8d;
+      transition: all 0.15s;
+    }
+    .toggle-btn.active {
+      background: #2E75B6;
+      border-color: #2E75B6;
+      color: white;
+    }
+
+    .predict-btn {
+      display: block;
+      width: 100%;
+      margin-top: 1.75rem;
+      padding: 0.9rem;
+      background: #2E75B6;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      letter-spacing: 0.2px;
+    }
+    .predict-btn:hover { background: #1d5e9a; }
+    .predict-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Results card */
+    #results-card { display: none; }
+
+    .risk-badge {
+      display: inline-block;
+      padding: 0.55rem 1.5rem;
+      border-radius: 30px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+    .risk-badge.high { background: #fde8e8; color: #C0392B; }
+    .risk-badge.medium { background: #fef3e8; color: #E67E22; }
+    .risk-badge.low { background: #e8f8ee; color: #27AE60; }
+
+    .prob-row { margin-bottom: 1.5rem; }
+    .prob-label { font-size: 0.82rem; color: #6b7a8d; margin-bottom: 0.35rem; }
+    .prob-pct { font-size: 2rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .prob-pct.high   { color: #C0392B; }
+    .prob-pct.medium { color: #E67E22; }
+    .prob-pct.low    { color: #27AE60; }
+
+    .prob-bar-track {
+      background: #edf0f5;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.6s ease;
+    }
+    .prob-bar-fill.high   { background: #C0392B; }
+    .prob-bar-fill.medium { background: #E67E22; }
+    .prob-bar-fill.low    { background: #27AE60; }
+
+    .factors-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    @media (max-width: 600px) { .factors-grid { grid-template-columns: 1fr; } }
+
+    .factors-box h3 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.6rem;
+    }
+    .factors-box.risk h3   { color: #C0392B; }
+    .factors-box.protect h3 { color: #27AE60; }
+
+    .factors-box ul { list-style: none; padding: 0; }
+    .factors-box ul li {
+      font-size: 0.87rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid #f0f3f7;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      line-height: 1.4;
+    }
+    .factors-box ul li::before {
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .factors-box.risk ul li::before   { content: '▲'; color: #C0392B; }
+    .factors-box.protect ul li::before { content: '▼'; color: #27AE60; }
+
+    .model-footer {
+      margin-top: 1.25rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #edf0f5;
+      font-size: 0.78rem;
+      color: #9aa4b2;
+    }
+
+    .spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Telco Churn Predictor</h1>
+    <p>XGBoost + SHAP — IBM Telco dataset</p>
+  </div>
+  <div class="model-badge" id="model-badge">Loading…</div>
+</header>
+
+<main>
+
+  <div class="examples-bar">
+    <span>Try an example:</span>
+    <button class="example-btn high" onclick="loadExample('high')">High Risk Customer</button>
+    <button class="example-btn mid"  onclick="loadExample('borderline')">Borderline</button>
+    <button class="example-btn low"  onclick="loadExample('low')">Low Risk Customer</button>
+  </div>
+
+  <div class="card">
+    <h2>Customer Profile</h2>
+
+    <div class="form-grid">
+
+      <div class="field">
+        <label>Tenure — <span class="slider-val" id="tenure-val">12 months</span></label>
+        <input type="range" id="tenure" min="0" max="72" value="12"
+               oninput="document.getElementById('tenure-val').textContent = this.value + ' months'" />
+      </div>
+
+      <div class="field">
+        <label>Monthly Charges — <span class="slider-val" id="monthly-val">$65</span></label>
+        <input type="range" id="monthly" min="0" max="120" value="65"
+               oninput="document.getElementById('monthly-val').textContent = '$' + this.value" />
+      </div>
+
+      <div class="field">
+        <label>Contract</label>
+        <select id="contract">
+          <option>Month-to-month</option>
+          <option>One year</option>
+          <option>Two year</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Internet Service</label>
+        <select id="internet">
+          <option>Fiber optic</option>
+          <option>DSL</option>
+          <option>No</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Tech Support</label>
+        <select id="techsupport">
+          <option>No</option>
+          <option>Yes</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Online Security</label>
+        <select id="security">
+          <option>No</option>
+          <option>Yes</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Payment Method</label>
+        <select id="payment">
+          <option>Electronic check</option>
+          <option>Mailed check</option>
+          <option>Bank transfer (automatic)</option>
+          <option>Credit card (automatic)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Paperless Billing</label>
+        <div class="toggle-row">
+          <button class="toggle-btn active" id="pb-yes" onclick="setToggle('pb','Yes')">Yes</button>
+          <button class="toggle-btn"        id="pb-no"  onclick="setToggle('pb','No')">No</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Senior Citizen</label>
+        <div class="toggle-row">
+          <button class="toggle-btn"        id="sc-yes" onclick="setToggle('sc','Yes')">Yes</button>
+          <button class="toggle-btn active" id="sc-no"  onclick="setToggle('sc','No')">No</button>
+        </div>
+      </div>
+
+    </div>
+
+    <button class="predict-btn" id="predict-btn" onclick="submitPrediction()">
+      <span id="btn-text">Predict Churn Risk</span>
+      <div class="spinner" id="spinner"></div>
+    </button>
+  </div>
+
+  <!-- Results -->
+  <div class="card" id="results-card">
+    <h2>Prediction</h2>
+    <div class="risk-badge" id="risk-badge">—</div>
+
+    <div class="prob-row">
+      <div class="prob-label">Churn Probability</div>
+      <div class="prob-pct" id="prob-pct">—</div>
+      <div class="prob-bar-track">
+        <div class="prob-bar-fill" id="prob-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="factors-grid">
+      <div class="factors-box risk">
+        <h3>Risk Factors</h3>
+        <ul id="risk-list"></ul>
+      </div>
+      <div class="factors-box protect">
+        <h3>Protective Factors</h3>
+        <ul id="protect-list"></ul>
+      </div>
+    </div>
+
+    <div class="model-footer" id="model-footer"></div>
+  </div>
+
+</main>
+
+<script>
+  // Toggle state
+  const toggleState = { pb: 'Yes', sc: 'No' };
+
+  function setToggle(key, val) {
+    toggleState[key] = val;
+    document.getElementById(key + '-yes').classList.toggle('active', val === 'Yes');
+    document.getElementById(key + '-no' ).classList.toggle('active', val === 'No');
+  }
+
+  // Model info footer
+  let modelInfo = {};
+  fetch('/api/model-info')
+    .then(r => r.json())
+    .then(d => {
+      modelInfo = d;
+      const ts = String(d.trained_at || '');
+      const dateStr = ts.length >= 8
+        ? ts.slice(0,4) + '-' + ts.slice(4,6) + '-' + ts.slice(6,8)
+        : ts;
+      document.getElementById('model-badge').innerHTML =
+        `<strong>${d.model_name || 'Model'}</strong><br>ROC-AUC: ${(d.roc_auc||0).toFixed(3)}`;
+    })
+    .catch(() => {
+      document.getElementById('model-badge').textContent = 'Run train.py first';
+    });
+
+  function getFormData() {
+    return {
+      tenure:           parseInt(document.getElementById('tenure').value),
+      MonthlyCharges:   parseFloat(document.getElementById('monthly').value),
+      Contract:         document.getElementById('contract').value,
+      InternetService:  document.getElementById('internet').value,
+      TechSupport:      document.getElementById('techsupport').value,
+      OnlineSecurity:   document.getElementById('security').value,
+      PaymentMethod:    document.getElementById('payment').value,
+      PaperlessBilling: toggleState.pb,
+      SeniorCitizen:    toggleState.sc === 'Yes' ? 1 : 0,
+    };
+  }
+
+  function setFormData(d) {
+    document.getElementById('tenure').value = d.tenure;
+    document.getElementById('tenure-val').textContent = d.tenure + ' months';
+    document.getElementById('monthly').value = d.MonthlyCharges;
+    document.getElementById('monthly-val').textContent = '$' + d.MonthlyCharges;
+    document.getElementById('contract').value = d.Contract;
+    document.getElementById('internet').value = d.InternetService;
+    document.getElementById('techsupport').value = d.TechSupport;
+    document.getElementById('security').value = d.OnlineSecurity;
+    document.getElementById('payment').value = d.PaymentMethod;
+    setToggle('pb', d.PaperlessBilling);
+    setToggle('sc', d.SeniorCitizen === 1 ? 'Yes' : 'No');
+  }
+
+  const EXAMPLES = {
+    high: {
+      tenure: 4, MonthlyCharges: 89, Contract: 'Month-to-month',
+      InternetService: 'Fiber optic', TechSupport: 'No', OnlineSecurity: 'No',
+      PaymentMethod: 'Electronic check', PaperlessBilling: 'Yes', SeniorCitizen: 0,
+    },
+    low: {
+      tenure: 60, MonthlyCharges: 45, Contract: 'Two year',
+      InternetService: 'DSL', TechSupport: 'Yes', OnlineSecurity: 'Yes',
+      PaymentMethod: 'Credit card (automatic)', PaperlessBilling: 'No', SeniorCitizen: 0,
+    },
+    borderline: {
+      tenure: 24, MonthlyCharges: 65, Contract: 'One year',
+      InternetService: 'Fiber optic', TechSupport: 'No', OnlineSecurity: 'Yes',
+      PaymentMethod: 'Bank transfer (automatic)', PaperlessBilling: 'Yes', SeniorCitizen: 1,
+    },
+  };
+
+  function loadExample(key) {
+    setFormData(EXAMPLES[key]);
+    submitPrediction();
+  }
+
+  async function submitPrediction() {
+    const btn = document.getElementById('predict-btn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btn-text');
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    spinner.style.display = 'block';
+
+    try {
+      const resp = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(getFormData()),
+      });
+      const d = await resp.json();
+
+      if (!resp.ok) {
+        alert(d.error || 'Prediction failed.');
+        return;
+      }
+
+      showResults(d);
+    } catch (e) {
+      alert('Network error — is the Flask server running?');
+    } finally {
+      btn.disabled = false;
+      btnText.style.display = '';
+      spinner.style.display = 'none';
+    }
+  }
+
+  function showResults(d) {
+    const card = document.getElementById('results-card');
+    card.style.display = 'block';
+
+    const level = d.risk_level;
+    const badge = document.getElementById('risk-badge');
+    badge.textContent = d.prediction;
+    badge.className = 'risk-badge ' + level;
+
+    const pct = document.getElementById('prob-pct');
+    pct.textContent = Math.round(d.churn_probability * 100) + '%';
+    pct.className = 'prob-pct ' + level;
+
+    const bar = document.getElementById('prob-bar');
+    bar.className = 'prob-bar-fill ' + level;
+    setTimeout(() => { bar.style.width = (d.churn_probability * 100) + '%'; }, 50);
+
+    const riskList = document.getElementById('risk-list');
+    riskList.innerHTML = (d.top_risk_factors || []).map(f => `<li>${f}</li>`).join('') ||
+                         '<li style="color:#9aa4b2">No significant risk factors</li>';
+
+    const protectList = document.getElementById('protect-list');
+    protectList.innerHTML = (d.top_protective_factors || []).map(f => `<li>${f}</li>`).join('') ||
+                            '<li style="color:#9aa4b2">No significant protective factors</li>';
+
+    const ts = String(modelInfo.trained_at || '');
+    const dateStr = ts.length >= 8
+      ? ts.slice(0,4) + '-' + ts.slice(4,6) + '-' + ts.slice(6,8)
+      : ts;
+    document.getElementById('model-footer').textContent =
+      `Model: ${d.model_used} · Trained: ${dateStr} · ROC-AUC: ${(modelInfo.roc_auc||0).toFixed(3)}`;
+
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+</script>
+
+</body>
+</html>

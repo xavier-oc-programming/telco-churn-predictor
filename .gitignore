@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+venv/
+.venv/
+.env
+*.egg-info/
+.vscode/
+.azure/
+models/bedrock_results.json
